@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>LOCK IN</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#222;
+    --green:#00ff88;--green-dim:#00ff8820;--green-mid:#00ff8855;
+    --red:#ff3355;--amber:#ffaa00;--blue:#00aaff;--purple:#8855ff;
+    --text:#e0e0e0;--text-dim:#666;
+    --mono:'JetBrains Mono',monospace;--sans:'Space Grotesk',sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:80px;overflow-x:hidden}
+
+  #splash{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;transition:opacity .5s ease,transform .5s ease}
+  #splash.bye{opacity:0;transform:scale(1.05);pointer-events:none}
+  .splash-name{font-family:var(--mono);font-size:36px;font-weight:800;color:var(--green);letter-spacing:8px;text-transform:uppercase;position:relative;overflow:hidden}
+  .splash-name .char{display:inline-block;opacity:0;transform:translateY(20px);animation:charIn .3s ease forwards}
+  @keyframes charIn{to{opacity:1;transform:translateY(0)}}
+  .splash-name::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 0%,var(--green) 50%,transparent 100%);opacity:.1;animation:scanline 1.5s ease-in-out infinite}
+  @keyframes scanline{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .splash-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:16px;letter-spacing:2px;opacity:0;animation:fadeUp .5s ease forwards;animation-delay:1s}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .splash-loader{margin-top:32px;width:120px;height:2px;background:var(--surface);border-radius:2px;overflow:hidden;opacity:0;animation:fadeUp .3s ease forwards;animation-delay:.8s}
+  .splash-loader-fill{height:100%;width:0%;background:var(--green);border-radius:2px;animation:loaderFill 1.5s ease forwards;animation-delay:1s;box-shadow:0 0 8px var(--green)}
+  @keyframes loaderFill{0%{width:0%}30%{width:40%}60%{width:70%}80%{width:85%}100%{width:100%}}
+  .splash-terminal{margin-top:20px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:left;width:220px;opacity:0;animation:fadeUp .3s ease forwards;animation-delay:1.2s}
+  .splash-terminal .line{opacity:0;animation:termLine .2s ease forwards}
+  @keyframes termLine{to{opacity:1}}
+  .splash-glitch{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;opacity:0}
+  .splash-glitch.flash{animation:glitchFlash .15s ease}
+  @keyframes glitchFlash{0%{opacity:0}20%{opacity:.3;background:var(--green)}40%{opacity:0}60%{opacity:.15;background:var(--green)}100%{opacity:0}}
+
+  #app{opacity:0;transition:opacity .5s ease}#app.show{opacity:1}
+
+  .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px;vertical-align:middle;transition:background .3s}
+  .sync-dot.online{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .sync-dot.offline{background:var(--red);box-shadow:0 0 6px var(--red)}
+  .sync-dot.syncing{background:var(--amber);animation:pulse .6s ease infinite alternate}
+  @keyframes pulse{from{opacity:.4}to{opacity:1}}
+
+  .header{text-align:center;padding:28px 16px 20px}
+  .header h1{font-family:var(--mono);font-size:24px;font-weight:800;color:var(--green);letter-spacing:6px;text-transform:uppercase;text-shadow:0 0 30px var(--green-dim)}
+  .sync-status{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:4px;letter-spacing:1px}
+  .streak-display{margin-top:16px;display:flex;justify-content:center;gap:12px}
+  .streak-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px}
+  .streak-box.glow{border-color:var(--green-mid);background:var(--green-dim)}
+  .streak-number{font-family:var(--mono);font-size:26px;font-weight:800;color:var(--green)}
+  .streak-label{font-size:9px;font-family:var(--mono);color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+  .today-date{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:12px}
+
+  .progress-wrap{padding:0 16px;margin-bottom:20px}
+  .progress-bar-bg{background:var(--surface);border-radius:6px;height:8px;overflow:hidden;border:1px solid var(--border)}
+  .progress-bar-fill{height:100%;background:var(--green);border-radius:6px;transition:width .4s ease;box-shadow:0 0 10px var(--green-dim)}
+  .progress-text{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:6px}
+
+  .tabs{display:flex;gap:4px;margin:0 16px 20px;background:var(--surface);border-radius:10px;padding:4px;position:sticky;top:0;z-index:10}
+  .tab{flex:1;padding:10px 4px;text-align:center;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:none;background:transparent;color:var(--text-dim);cursor:pointer;border-radius:8px;transition:all .2s}
+  .tab.active{background:var(--green);color:#000}
+
+  .section{display:none;padding:0 16px}.section.active{display:block}
+
+  .block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;transition:border-color .3s,opacity .3s}
+  .block.all-checked{border-color:var(--green-mid);opacity:.6}
+  .block-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .time-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;white-space:nowrap}
+  .time-badge.morning{background:var(--amber);color:#000}
+  .time-badge.afternoon{background:var(--blue);color:#000}
+  .time-badge.evening{background:var(--green);color:#000}
+  .time-badge.night{background:var(--purple);color:#fff}
+  .time-badge.flex{background:var(--red);color:#fff}
+  .block-title{font-weight:700;font-size:14px}
+
+  .task-check{display:flex;align-items:flex-start;gap:10px;padding:7px 0;cursor:pointer;-webkit-user-select:none;user-select:none}
+  .cbox{width:20px;height:20px;min-width:20px;border:2px solid var(--text-dim);border-radius:5px;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .2s}
+  .cbox.on{background:var(--green);border-color:var(--green)}
+  .cbox.on::after{content:'✓';color:#000;font-size:13px;font-weight:800}
+  .task-text{font-size:13px;color:var(--text-dim);line-height:1.5;transition:all .2s}
+  .task-text strong{color:var(--text)}
+  .task-text.done{text-decoration:line-through;opacity:.4}
+  .task-text.done strong{color:var(--text-dim)}
+
+  .box-counter{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px;padding:8px;background:var(--bg);border-radius:8px}
+  .box-counter-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--green);font-family:var(--mono);font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .box-counter-btn:active{background:var(--green);color:#000;transform:scale(.9)}
+  .box-counter-btn.minus{color:var(--red)}
+  .box-counter-btn.minus:active{background:var(--red);color:#fff}
+  .box-count-display{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--green);min-width:40px;text-align:center}
+  .box-count-label{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-top:4px}
+
+  .day-indicator{display:flex;gap:4px;margin-bottom:16px;justify-content:center}
+  .day-dot{width:36px;padding:6px 0;text-align:center;font-family:var(--mono);font-size:10px;font-weight:700;border-radius:6px;background:var(--surface);color:var(--text-dim);border:1px solid var(--border)}
+  .day-dot.today{background:var(--green);color:#000;border-color:var(--green)}
+  .day-dot.past-done{background:var(--green-dim);color:var(--green);border-color:var(--green-mid)}
+
+  .skill-today{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--green-mid);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center}
+  .skill-today-label{font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .skill-today-value{font-size:14px;font-weight:700}
+
+  .month-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden}
+  .month-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+  .month-card.m1::before{background:var(--green)}.month-card.m2::before{background:var(--blue)}.month-card.m3::before{background:var(--amber)}.month-card.m4::before{background:var(--red)}.month-card.m5::before{background:var(--purple)}.month-card.m6::before{background:#ff66aa}
+  .month-label{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .m1 .month-label{color:var(--green)}.m2 .month-label{color:var(--blue)}.m3 .month-label{color:var(--amber)}.m4 .month-label{color:var(--red)}.m5 .month-label{color:var(--purple)}.m6 .month-label{color:#ff66aa}
+  .month-goal{font-size:15px;font-weight:700;margin-bottom:6px}
+  .month-details{font-size:12px;color:var(--text-dim);line-height:1.7}
+
+  .rule-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+  .rule-number{font-family:var(--mono);font-size:28px;font-weight:800;color:var(--green);opacity:.2;float:right;margin-top:-4px}
+  .rule-title{font-weight:700;font-size:14px;margin-bottom:4px}
+  .rule-desc{font-size:12px;color:var(--text-dim);line-height:1.6}
+
+  .section-title{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--text-dim);margin:20px 0 12px}
+  .replacement-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .replace-card{background:var(--surface2);border-radius:8px;padding:10px;text-align:center}
+  .replace-old{font-size:11px;color:var(--red);text-decoration:line-through;font-family:var(--mono)}
+  .replace-arrow{font-size:10px;color:var(--text-dim);margin:2px 0}
+  .replace-new{font-size:12px;color:var(--green);font-weight:700}
+
+  .btn-row{display:flex;gap:8px;margin-top:20px}
+  .action-btn{flex:1;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-family:var(--mono);font-size:11px;cursor:pointer;text-align:center;transition:all .2s}
+  .action-btn:active{background:var(--surface2)}
+  .action-btn.report-btn:active{background:var(--green);color:#000;border-color:var(--green)}
+  .action-btn.reset-btn:active{background:var(--red);color:#fff;border-color:var(--red)}
+
+  .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:50;align-items:center;justify-content:center;padding:16px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--border)}
+  .modal-title{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green)}
+  .modal-close{background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;padding:4px 8px}
+  .modal-body{padding:16px;overflow-y:auto;flex:1}
+  .report-text{width:100%;min-height:280px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:var(--mono);font-size:11px;line-height:1.7;resize:none;outline:none}
+  .modal-actions{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+  .modal-btn{flex:1;padding:10px;border-radius:8px;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;text-align:center;border:none;transition:all .2s}
+  .modal-btn.copy{background:var(--green);color:#000}
+  .modal-btn.copy:active{opacity:.7}
+  .modal-btn.copy.copied{background:var(--amber)}
+  .modal-btn.share{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+
+  .note-wrap{margin-top:10px}
+  .note-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+  .note-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;resize:none;outline:none;min-height:60px;line-height:1.5}
+  .note-input::placeholder{color:var(--text-dim)}
+  .note-input:focus{border-color:var(--green-mid)}
+
+  .footer{text-align:center;padding:28px 0;font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .footer span{color:var(--green)}
+
+  #confetti{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:100}
+  .cpce{position:absolute;width:8px;height:8px;border-radius:2px;animation:cfall 1.5s ease-out forwards}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+
+  /* ========== OSCP CHECKLIST STYLES ========== */
+  .oscp-header{text-align:center;margin-bottom:16px}
+  .oscp-progress{display:flex;gap:8px;margin-bottom:16px}
+  .oscp-stat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center}
+  .oscp-stat-num{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--green)}
+  .oscp-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+  .oscp-search{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;margin-bottom:12px}
+  .oscp-search:focus{border-color:var(--green-mid)}
+  .oscp-search::placeholder{color:var(--text-dim)}
+
+  .oscp-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--surface);border-radius:8px;padding:3px}
+  .oscp-tab{flex:1;padding:8px 4px;text-align:center;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border:none;background:transparent;color:var(--text-dim);cursor:pointer;border-radius:6px;transition:all .2s}
+  .oscp-tab.active{color:#000}
+  .oscp-tab.t-easy.active{background:var(--green)}
+  .oscp-tab.t-med.active{background:var(--amber)}
+  .oscp-tab.t-hard.active{background:var(--red)}
+  .oscp-tab.t-all.active{background:var(--blue)}
+  .oscp-tab.t-pg.active{background:var(--purple)}
+
+  .oscp-list{display:flex;flex-direction:column;gap:6px}
+  .oscp-box{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .2s;-webkit-user-select:none;user-select:none}
+  .oscp-box:active{transform:scale(.98)}
+  .oscp-box.checked{border-color:var(--green-mid);opacity:.5}
+  .oscp-box .cbox{min-width:18px;width:18px;height:18px}
+  .oscp-box-info{flex:1;min-width:0}
+  .oscp-box-name{font-weight:700;font-size:13px}
+  .oscp-box-meta{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+  .oscp-diff{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap}
+  .oscp-diff.easy{background:var(--green-dim);color:var(--green)}
+  .oscp-diff.medium{background:#ffaa0020;color:var(--amber)}
+  .oscp-diff.hard{background:#ff335520;color:var(--red)}
+  .oscp-empty{text-align:center;padding:30px;color:var(--text-dim);font-family:var(--mono);font-size:12px}
+
+  /* ========== ANALYTICS STYLES ========== */
+  .analytics-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+  .analytics-title{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+
+  .heatmap-wrap{overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .heatmap-grid{display:flex;gap:2px}
+  .heatmap-col{display:flex;flex-direction:column;gap:2px}
+  .heatmap-cell{width:11px;height:11px;border-radius:2px;background:var(--surface2);border:1px solid transparent;transition:background .2s}
+  .heatmap-cell.l1{background:#00ff8830}
+  .heatmap-cell.l2{background:#00ff8860}
+  .heatmap-cell.l3{background:#00ff8890}
+  .heatmap-cell.l4{background:var(--green)}
+  .heatmap-cell.today-cell{border:1px solid var(--green)}
+  .heatmap-months{display:flex;gap:2px;margin-bottom:4px;padding-left:0}
+  .heatmap-month-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);text-align:left}
+  .heatmap-legend{display:flex;align-items:center;gap:4px;margin-top:8px;justify-content:flex-end}
+  .heatmap-legend-label{font-family:var(--mono);font-size:8px;color:var(--text-dim)}
+
+  .chart-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .chart-bar-label{font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:32px;text-align:right}
+  .chart-bar-track{flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative}
+  .chart-bar-fill{height:100%;border-radius:4px;transition:width .5s ease;min-width:2px}
+  .chart-bar-val{font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:24px}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{background:var(--bg);border-radius:8px;padding:12px;text-align:center}
+  .stat-card-num{font-family:var(--mono);font-size:24px;font-weight:800;color:var(--green)}
+  .stat-card-lbl{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+
+  .cat-bar{margin-bottom:10px}
+  .cat-bar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .cat-bar-name{font-size:12px;font-weight:600}
+  .cat-bar-count{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .cat-bar-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+  .cat-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+  .streak-chart{display:flex;align-items:flex-end;gap:2px;height:60px;padding:4px 0}
+  .streak-bar{flex:1;background:var(--green-dim);border-radius:2px 2px 0 0;transition:height .3s ease;min-height:2px}
+  .streak-bar.active{background:var(--green)}
+  .streak-labels{display:flex;gap:2px;margin-top:4px}
+  .streak-lbl{flex:1;text-align:center;font-family:var(--mono);font-size:7px;color:var(--text-dim)}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="splash-glitch" id="splashGlitch"></div>
+  <div class="splash-name" id="splashName"></div>
+  <div class="splash-sub">initializing...</div>
+  <div class="splash-loader"><div class="splash-loader-fill"></div></div>
+  <div class="splash-terminal" id="splashTerm"></div>
+</div>
+
+<div id="app">
+<div id="confetti"></div>
+
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Daily Report</span>
+      <button class="modal-close" onclick="closeReport()">✕</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="report-text" id="reportText" readonly></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn copy" id="copyBtn" onclick="copyReport()">Copy</button>
+      <button class="modal-btn share" onclick="shareReport()">Share</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>LOCK IN <span class="sync-dot offline" id="syncDot" title="sync status"></span></h1>
+  <div class="sync-status" id="syncLabel">offline</div>
+  <div class="streak-display">
+    <div class="streak-box glow"><div class="streak-number" id="s-cur">0</div><div class="streak-label">streak</div></div>
+    <div class="streak-box"><div class="streak-number" id="s-box">0</div><div class="streak-label">boxes</div></div>
+    <div class="streak-box"><div class="streak-number" id="s-best">0</div><div class="streak-label">best</div></div>
+  </div>
+  <div class="today-date" id="tdate"></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="pbar" style="width:0%"></div></div>
+  <div class="progress-text"><span id="plbl">0/9</span><span id="ppct">0%</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('daily',this)">Today</button>
+  <button class="tab" onclick="showTab('boxes',this)">OSCP</button>
+  <button class="tab" onclick="showTab('stats',this)">Stats</button>
+  <button class="tab" onclick="showTab('timeline',this)">Plan</button>
+  <button class="tab" onclick="showTab('rules',this)">Rules</button>
+</div>
+
+<!-- ========== TODAY TAB ========== -->
+<div id="daily" class="section active">
+  <div class="day-indicator" id="dots"></div>
+  <div class="skill-today">
+    <div class="skill-today-label">Today's Skill Focus</div>
+    <div class="skill-today-value" id="skillv"></div>
+  </div>
+
+  <div class="block" data-tasks="0,1">
+    <div class="block-header"><span class="time-badge morning">8-9 AM</span><span class="block-title">Wake Up + Reset</span></div>
+    <div class="task-check" onclick="tog(0)"><div class="cbox" id="c0"></div><span class="task-text" id="t0">Cold water face wash. Make bed. <strong>Room stays clean.</strong></span></div>
+    <div class="task-check" onclick="tog(1)"><div class="cbox" id="c1"></div><span class="task-text" id="t1">No phone first 30 min. No Twitter. No TikTok.</span></div>
+  </div>
+
+  <div class="block" data-tasks="2,3">
+    <div class="block-header"><span class="time-badge morning">9 AM-1 PM</span><span class="block-title">The Box</span></div>
+    <div class="task-check" onclick="tog(2)"><div class="cbox" id="c2"></div><span class="task-text" id="t2"><strong>Did at least one box.</strong> Recon → enumerate → exploit → privesc.</span></div>
+    <div class="task-check" onclick="tog(3)"><div class="cbox" id="c3"></div><span class="task-text" id="t3"><strong>Write notes.</strong> What worked, what didn't, tools used.</span></div>
+    <div class="box-counter">
+      <button class="box-counter-btn minus" onclick="adjBox(-1)">−</button>
+      <div>
+        <div class="box-count-display" id="dayBoxCount">0</div>
+        <div class="box-count-label">boxes today</div>
+      </div>
+      <button class="box-counter-btn" onclick="adjBox(1)">+</button>
+    </div>
+  </div>
+
+  <div class="block" data-tasks="4">
+    <div class="block-header"><span class="time-badge afternoon">1-2 PM</span><span class="block-title">Break + Food</span></div>
+    <div class="task-check" onclick="tog(4)"><div class="cbox" id="c4"></div><span class="task-text" id="t4">Eat actual food. Step outside. Stretch.</span></div>
+  </div>
+
+  <div class="block" data-tasks="5">
+    <div class="block-header"><span class="time-badge afternoon">2-4 PM</span><span class="block-title">Skill Stack</span></div>
+    <div class="task-check" onclick="tog(5)"><div class="cbox" id="c5"></div><span class="task-text" id="t5"><strong>Complete today's skill focus</strong> (see above). 45 min stuck rule applies.</span></div>
+  </div>
+
+  <div class="block" data-tasks="6">
+    <div class="block-header"><span class="time-badge evening">4-7 PM</span><span class="block-title">FC25 Time</span></div>
+    <div class="task-check" onclick="tog(6)"><div class="cbox" id="c6"></div><span class="task-text" id="t6"><strong>Box done? Play FC25.</strong> No box = no game. Pushups between matches.</span></div>
+  </div>
+
+  <div class="block" data-tasks="7">
+    <div class="block-header"><span class="time-badge night">7-9 PM</span><span class="block-title">Light Learning</span></div>
+    <div class="task-check" onclick="tog(7)"><div class="cbox" id="c7"></div><span class="task-text" id="t7">One <strong>IppSec</strong> or <strong>LiveOverflow</strong> video. One threat intel report.</span></div>
+  </div>
+
+  <div class="block" data-tasks="8">
+    <div class="block-header"><span class="time-badge flex">9-10 PM</span><span class="block-title">Wind Down</span></div>
+    <div class="task-check" onclick="tog(8)"><div class="cbox" id="c8"></div><span class="task-text" id="t8">Phone on airplane mode. No scrolling. Sleep.</span></div>
+  </div>
+
+  <div class="block">
+    <div class="block-header"><span class="block-title">Today's Notes</span></div>
+    <div class="note-wrap">
+      <div class="note-label">Box name / what you learned</div>
+      <textarea class="note-input" id="boxNote" placeholder="e.g. HTB Lame — SMB exploit, got root via ms08_067..." oninput="saveNote()"></textarea>
+    </div>
+    <div class="note-wrap" style="margin-top:8px">
+      <div class="note-label">Wins / struggles / mood</div>
+      <textarea class="note-input" id="moodNote" placeholder="e.g. Stuck on privesc for 40 min, watched IppSec, learned about SUID binaries..." oninput="saveNote()"></textarea>
+    </div>
+  </div>
+
+  <div class="section-title">Replacements</div>
+  <div class="replacement-grid">
+    <div class="replace-card"><div class="replace-old">Twitter</div><div class="replace-arrow">↓</div><div class="replace-new">FC25</div></div>
+    <div class="replace-card"><div class="replace-old">TikTok</div><div class="replace-arrow">↓</div><div class="replace-new">IppSec</div></div>
+    <div class="replace-card"><div class="replace-old">Doom scroll</div><div class="replace-arrow">↓</div><div class="replace-new">Bug bounty</div></div>
+    <div class="replace-card"><div class="replace-old">Lying in bed</div><div class="replace-arrow">↓</div><div class="replace-new">One box</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="action-btn report-btn" onclick="genReport()">📋 Report</button>
+    <button class="action-btn" onclick="syncNow()" id="syncBtn">⟳ Sync</button>
+    <button class="action-btn reset-btn" onclick="resetDay()">↻ Reset</button>
+  </div>
+</div>
+
+<!-- ========== OSCP CHECKLIST TAB ========== -->
+<div id="boxes" class="section">
+  <div class="oscp-header">
+    <div class="oscp-progress">
+      <div class="oscp-stat"><div class="oscp-stat-num" id="oscp-done">0</div><div class="oscp-stat-lbl">pwned</div></div>
+      <div class="oscp-stat"><div class="oscp-stat-num" id="oscp-total">0</div><div class="oscp-stat-lbl">total</div></div>
+      <div class="oscp-stat"><div class="oscp-stat-num" id="oscp-pct">0%</div><div class="oscp-stat-lbl">complete</div></div>
+    </div>
+  </div>
+  <input class="oscp-search" id="oscpSearch" type="text" placeholder="Search boxes..." oninput="renderOSCP()">
+  <div class="oscp-tabs">
+    <button class="oscp-tab t-all active" onclick="setOSCPTab('all',this)">All</button>
+    <button class="oscp-tab t-easy" onclick="setOSCPTab('easy',this)">Easy</button>
+    <button class="oscp-tab t-med" onclick="setOSCPTab('medium',this)">Med</button>
+    <button class="oscp-tab t-hard" onclick="setOSCPTab('hard',this)">Hard</button>
+    <button class="oscp-tab t-pg" onclick="setOSCPTab('pg',this)">PG</button>
+  </div>
+  <div class="oscp-list" id="oscpList"></div>
+</div>
+
+<!-- ========== ANALYTICS TAB ========== -->
+<div id="stats" class="section">
+  <div class="analytics-card">
+    <div class="analytics-title">Contribution Heatmap</div>
+    <div class="heatmap-wrap">
+      <div id="heatmapMonths" class="heatmap-months"></div>
+      <div id="heatmap" class="heatmap-grid"></div>
+    </div>
+    <div class="heatmap-legend">
+      <span class="heatmap-legend-label">Less</span>
+      <div class="heatmap-cell" style="width:10px;height:10px"></div>
+      <div class="heatmap-cell l1" style="width:10px;height:10px"></div>
+      <div class="heatmap-cell l2" style="width:10px;height:10px"></div>
+      <div class="heatmap-cell l3" style="width:10px;height:10px"></div>
+      <div class="heatmap-cell l4" style="width:10px;height:10px"></div>
+      <span class="heatmap-legend-label">More</span>
+    </div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-title">Overview</div>
+    <div class="stat-grid" id="overviewStats"></div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-title">Weekly Activity (last 7 days)</div>
+    <div id="weeklyChart"></div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-title">Monthly Boxes</div>
+    <div id="monthlyChart"></div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-title">Skill Categories</div>
+    <div id="categoryChart"></div>
+  </div>
+
+  <div class="analytics-card">
+    <div class="analytics-title">Streak History (last 30 days)</div>
+    <div class="streak-chart" id="streakChart"></div>
+    <div class="streak-labels" id="streakLabels"></div>
+  </div>
+</div>
+
+<!-- ========== PLAN TAB ========== -->
+<div id="timeline" class="section">
+  <div class="month-card m1"><div class="month-label">Month 1 — Foundation</div><div class="month-goal">30 boxes. Build the habit.</div><div class="month-details">TJ Null's easy/medium list. Proving Grounds Practice. PortSwigger Web Academy started. Set up Obsidian notes. Clean HackerOne profile — add PicoCTF win. Request CPTS from PicoCTF prize.</div></div>
+  <div class="month-card m2"><div class="month-label">Month 2 — Depth</div><div class="month-goal">60 boxes total. First bounty submission.</div><div class="month-details">Medium/hard boxes. PortSwigger labs (SQLi, XSS, SSRF, IDOR). Submit first bug bounty report. Start CPTS path if voucher is in.</div></div>
+  <div class="month-card m3"><div class="month-label">Month 3 — Weaponize</div><div class="month-goal">Active bounty hunter. CPTS exam attempt.</div><div class="month-details">Harder HTB boxes + Active Directory. pwn.college binary exploitation. Take CPTS exam. Write 4+ blog posts. Public portfolio established.</div></div>
+  <div class="month-card m4"><div class="month-label">Month 4 — Real World</div><div class="month-goal">Start HTB ProLab (Dante or Offshore).</div><div class="month-details">ProLabs = simulated corporate networks. Continue bounty hunting. Start applying to junior pentest roles.</div></div>
+  <div class="month-card m5"><div class="month-label">Month 5 — Hunt</div><div class="month-goal">Job applications. OSCP savings grind.</div><div class="month-details">Apply to 5 remote security roles per week. Freelance pentest on Upwork. Save bounty earnings toward OSCP. NITDA CTF — compete hard.</div></div>
+  <div class="month-card m6"><div class="month-label">Month 6 — Level Up</div><div class="month-goal">Employed or earning. OSCP in sight.</div><div class="month-details">Job offer or steady freelance income. 150+ boxes completed. Multiple verified bounty findings. Enough saved for OSCP.</div></div>
+</div>
+
+<!-- ========== RULES TAB ========== -->
+<div id="rules" class="section">
+  <div class="rule-card"><div class="rule-number">01</div><div class="rule-title">One box minimum. Every day.</div><div class="rule-desc">Not two. Not five. One. Consistency beats intensity. Never zero.</div></div>
+  <div class="rule-card"><div class="rule-number">02</div><div class="rule-title">Delete TikTok. Limit Twitter to 20 min.</div><div class="rule-desc">Use app blockers. The algorithm steals hours. You know this.</div></div>
+  <div class="rule-card"><div class="rule-number">03</div><div class="rule-title">No box = no FC25.</div><div class="rule-desc">Gaming is the reward, not the activity. After you work. Every time.</div></div>
+  <div class="rule-card"><div class="rule-number">04</div><div class="rule-title">Document everything.</div><div class="rule-desc">Every box gets notes. This becomes your methodology, blog content, and interview prep.</div></div>
+  <div class="rule-card"><div class="rule-number">05</div><div class="rule-title">45-minute stuck rule.</div><div class="rule-desc">Stuck 45 min? Watch the walkthrough. Learning > ego.</div></div>
+  <div class="rule-card"><div class="rule-number">06</div><div class="rule-title">Room stays clean.</div><div class="rule-desc">Your environment is your mental state. 5 minutes every morning.</div></div>
+  <div class="rule-card"><div class="rule-number">07</div><div class="rule-title">No comparing to peers.</div><div class="rule-desc">You won PicoCTF Africa. Run your own race. Only competition is yesterday's you.</div></div>
+</div>
+
+<div class="footer"><span>$</span> sudo lock-in --no-excuses</div>
+</div>
+
+<script>
+// ========== SPLASH ==========
+(function(){
+  const name='Mycr0ft';
+  const el=document.getElementById('splashName');
+  const term=document.getElementById('splashTerm');
+  const glitch=document.getElementById('splashGlitch');
+  name.split('').forEach((ch,i)=>{
+    const span=document.createElement('span');span.className='char';span.textContent=ch;
+    span.style.animationDelay=(i*0.1)+'s';el.appendChild(span);
+  });
+  const lines=[
+    {text:'> loading modules...',delay:800},
+    {text:'> connecting firebase...',delay:1200},
+    {text:'> auth: Mycr0ft [verified]',delay:1600},
+    {text:'> status: locked in',delay:2000}
+  ];
+  lines.forEach(l=>{setTimeout(()=>{
+    const div=document.createElement('div');div.className='line';div.textContent=l.text;
+    div.style.animationDelay='0s';term.appendChild(div);
+  },l.delay);});
+  setTimeout(()=>{glitch.classList.add('flash');},2200);
+  setTimeout(()=>{
+    document.getElementById('splash').classList.add('bye');
+    document.getElementById('app').classList.add('show');
+    setTimeout(()=>{document.getElementById('splash').style.display='none';},600);
+  },2800);
+})();
+
+// ========== FIREBASE CONFIG ==========
+const FB_URL='https://lockin-e1e1b-default-rtdb.europe-west1.firebasedatabase.app';
+
+async function fbGet(path){
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json`);
+    if(!r.ok)throw new Error(r.status);
+    return await r.json();
+  }catch(e){return null;}
+}
+
+async function fbSet(path,data){
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)
+    });
+    return r.ok;
+  }catch(e){return false;}
+}
+
+function setSyncStatus(status){
+  const dot=document.getElementById('syncDot');
+  const label=document.getElementById('syncLabel');
+  dot.className='sync-dot '+status;
+  const labels={online:'synced',offline:'offline',syncing:'syncing...'};
+  label.textContent=labels[status]||status;
+}
+
+// ========== APP STATE ==========
+const N=9,DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const TASK_NAMES=['Room clean + face wash','No phone 30 min','One box completed','Notes written','Break + food','Skill stack session','FC25 (earned)','IppSec / learning','Wind down - phone off'];
+const SK={0:'Rest / writeup day - blog one box from this week',1:'Web exploitation - PortSwigger Academy',2:'Binary exploitation - pwn.college',3:'Scripting - build a Python tool, automate something',4:'Web exploitation - PortSwigger Academy',5:'Binary exploitation - pwn.college',6:'Bug bounty - HackerOne, real targets, real money'};
+
+let T=Array(N).fill(false);
+let S={c:0,b:0,best:0,last:null,w:{}};
+let notes={box:'',mood:''};
+let dayBoxes=0;
+
+const dkey=()=>new Date().toISOString().split('T')[0];
+const LS_STATS='lockin-stats';
+const LS_TASKS=()=>'lockin-tasks-'+dkey();
+const LS_NOTES=()=>'lockin-notes-'+dkey();
+const LS_BOXES=()=>'lockin-boxes-'+dkey();
+
+// ========== TJ NULL OSCP BOX LIST ==========
+const OSCP_BOXES=[
+  // HTB Easy
+  {name:'Lame',platform:'HTB',diff:'easy',os:'Linux',tags:['smb','cve']},
+  {name:'Legacy',platform:'HTB',diff:'easy',os:'Windows',tags:['smb','ms08-067']},
+  {name:'Devel',platform:'HTB',diff:'easy',os:'Windows',tags:['ftp','webshell']},
+  {name:'Beep',platform:'HTB',diff:'easy',os:'Linux',tags:['voip','lfi']},
+  {name:'Optimum',platform:'HTB',diff:'easy',os:'Windows',tags:['hfs','cve']},
+  {name:'Bastard',platform:'HTB',diff:'easy',os:'Windows',tags:['drupal','cve']},
+  {name:'Granny',platform:'HTB',diff:'easy',os:'Windows',tags:['webdav','token']},
+  {name:'Grandpa',platform:'HTB',diff:'easy',os:'Windows',tags:['webdav','token']},
+  {name:'Silo',platform:'HTB',diff:'easy',os:'Windows',tags:['oracle','odat']},
+  {name:'Jerry',platform:'HTB',diff:'easy',os:'Windows',tags:['tomcat','default-creds']},
+  {name:'Blue',platform:'HTB',diff:'easy',os:'Windows',tags:['ms17-010','eternalblue']},
+  {name:'Nibbles',platform:'HTB',diff:'easy',os:'Linux',tags:['nibbleblog','sudo']},
+  {name:'Shocker',platform:'HTB',diff:'easy',os:'Linux',tags:['shellshock','cgi']},
+  {name:'Bashed',platform:'HTB',diff:'easy',os:'Linux',tags:['phpbash','cron']},
+  {name:'Valentine',platform:'HTB',diff:'easy',os:'Linux',tags:['heartbleed','tmux']},
+  {name:'Arctic',platform:'HTB',diff:'easy',os:'Windows',tags:['coldfusion','cve']},
+  {name:'Knife',platform:'HTB',diff:'easy',os:'Linux',tags:['php-backdoor','knife']},
+  {name:'Mirai',platform:'HTB',diff:'easy',os:'Linux',tags:['default-creds','iot']},
+  {name:'Sense',platform:'HTB',diff:'easy',os:'FreeBSD',tags:['pfsense','cve']},
+  {name:'Sunday',platform:'HTB',diff:'easy',os:'Solaris',tags:['finger','sudo']},
+  {name:'Irked',platform:'HTB',diff:'easy',os:'Linux',tags:['irc','steganography']},
+  {name:'FriendZone',platform:'HTB',diff:'easy',os:'Linux',tags:['dns','smb','lfi']},
+  {name:'SwagShop',platform:'HTB',diff:'easy',os:'Linux',tags:['magento','sudo']},
+  {name:'Networked',platform:'HTB',diff:'easy',os:'Linux',tags:['upload','cron']},
+  {name:'Keeper',platform:'HTB',diff:'easy',os:'Linux',tags:['default-creds','keepass']},
+  // HTB Medium
+  {name:'Poison',platform:'HTB',diff:'medium',os:'FreeBSD',tags:['lfi','vnc']},
+  {name:'Node',platform:'HTB',diff:'medium',os:'Linux',tags:['nodejs','mongodb']},
+  {name:'Cronos',platform:'HTB',diff:'medium',os:'Linux',tags:['dns','sqli','cron']},
+  {name:'Nineveh',platform:'HTB',diff:'medium',os:'Linux',tags:['brute','lfi','chkrootkit']},
+  {name:'SolidState',platform:'HTB',diff:'medium',os:'Linux',tags:['james','cron']},
+  {name:'October',platform:'HTB',diff:'medium',os:'Linux',tags:['cms','bof']},
+  {name:'Jeeves',platform:'HTB',diff:'medium',os:'Windows',tags:['jenkins','keepass']},
+  {name:'Active',platform:'HTB',diff:'medium',os:'Windows',tags:['ad','kerberoast','gpp']},
+  {name:'Falafel',platform:'HTB',diff:'medium',os:'Linux',tags:['sqli','upload']},
+  {name:'DevOops',platform:'HTB',diff:'medium',os:'Linux',tags:['xxe','git']},
+  {name:'Netmon',platform:'HTB',diff:'medium',os:'Windows',tags:['ftp','prtg']},
+  {name:'LaCasaDePapel',platform:'HTB',diff:'medium',os:'Linux',tags:['ssl','vsftpd']},
+  {name:'Bastion',platform:'HTB',diff:'medium',os:'Windows',tags:['smb','vhd','mremoteng']},
+  {name:'Writeup',platform:'HTB',diff:'medium',os:'Linux',tags:['cms','path-hijack']},
+  {name:'Obscurity',platform:'HTB',diff:'medium',os:'Linux',tags:['python','crypto']},
+  {name:'Resolute',platform:'HTB',diff:'medium',os:'Windows',tags:['ad','winrm','dll']},
+  {name:'Nest',platform:'HTB',diff:'medium',os:'Windows',tags:['smb','dotnet']},
+  {name:'Traverxec',platform:'HTB',diff:'medium',os:'Linux',tags:['nostromo','ssh']},
+  {name:'OpenAdmin',platform:'HTB',diff:'medium',os:'Linux',tags:['opennetadmin','nano']},
+  {name:'ServMon',platform:'HTB',diff:'medium',os:'Windows',tags:['nvms','nsclient']},
+  {name:'Magic',platform:'HTB',diff:'medium',os:'Linux',tags:['sqli','upload','suid']},
+  {name:'Admirer',platform:'HTB',diff:'medium',os:'Linux',tags:['adminer','python-path']},
+  {name:'Blunder',platform:'HTB',diff:'medium',os:'Linux',tags:['bludit','sudo']},
+  {name:'Tabby',platform:'HTB',diff:'medium',os:'Linux',tags:['tomcat','lxd']},
+  {name:'Buff',platform:'HTB',diff:'medium',os:'Windows',tags:['gym-cms','bof']},
+  {name:'Ready',platform:'HTB',diff:'medium',os:'Linux',tags:['gitlab','docker']},
+  {name:'Delivery',platform:'HTB',diff:'medium',os:'Linux',tags:['mattermost','hashcat']},
+  {name:'Love',platform:'HTB',diff:'medium',os:'Windows',tags:['ssrf','msi']},
+  {name:'Explore',platform:'HTB',diff:'medium',os:'Android',tags:['es-file','adb']},
+  {name:'Previse',platform:'HTB',diff:'medium',os:'Linux',tags:['exec','path-hijack']},
+  {name:'Pandora',platform:'HTB',diff:'medium',os:'Linux',tags:['snmp','pandorafms']},
+  {name:'Paper',platform:'HTB',diff:'medium',os:'Linux',tags:['wordpress','rocket-chat']},
+  {name:'Photobomb',platform:'HTB',diff:'medium',os:'Linux',tags:['command-injection','path-hijack']},
+  {name:'Sau',platform:'HTB',diff:'medium',os:'Linux',tags:['ssrf','systemd']},
+  {name:'PC',platform:'HTB',diff:'medium',os:'Linux',tags:['grpc','sqli']},
+  // HTB Hard
+  {name:'Jail',platform:'HTB',diff:'hard',os:'Linux',tags:['bof','nfs']},
+  {name:'Holiday',platform:'HTB',diff:'hard',os:'Linux',tags:['xss','sqli','npm']},
+  {name:'Aragog',platform:'HTB',diff:'hard',os:'Linux',tags:['xxe','wordpress']},
+  {name:'Ghoul',platform:'HTB',diff:'hard',os:'Linux',tags:['zip-slip','pivot','docker']},
+  {name:'RE',platform:'HTB',diff:'hard',os:'Windows',tags:['malware','ods']},
+  {name:'Bankrobber',platform:'HTB',diff:'hard',os:'Windows',tags:['xss','sqli','bof']},
+  {name:'Zetta',platform:'HTB',diff:'hard',os:'Linux',tags:['ftp','ipv6','sqli']},
+  {name:'Control',platform:'HTB',diff:'hard',os:'Windows',tags:['sqli','registry']},
+  {name:'Multimaster',platform:'HTB',diff:'hard',os:'Windows',tags:['ad','sqli','amsi']},
+  {name:'Travel',platform:'HTB',diff:'hard',os:'Linux',tags:['ssrf','memcached','ldap']},
+  {name:'Quick',platform:'HTB',diff:'hard',os:'Linux',tags:['quic','esi','race']},
+  {name:'Object',platform:'HTB',diff:'hard',os:'Windows',tags:['ad','jenkins','firewall']},
+  // Proving Grounds Practice
+  {name:'Algernon',platform:'PG',diff:'easy',os:'Windows',tags:['smtp','cve']},
+  {name:'Bratarina',platform:'PG',diff:'easy',os:'Linux',tags:['smtp','cve']},
+  {name:'ClamAV',platform:'PG',diff:'easy',os:'Linux',tags:['smtp','clamav']},
+  {name:'Craft',platform:'PG',diff:'easy',os:'Linux',tags:['upload','wildcard']},
+  {name:'DVR4',platform:'PG',diff:'easy',os:'Windows',tags:['argus','cve']},
+  {name:'Exfiltrated',platform:'PG',diff:'easy',os:'Linux',tags:['subrion','cron']},
+  {name:'Helpdesk',platform:'PG',diff:'easy',os:'Windows',tags:['manageengine','cve']},
+  {name:'Hetemit',platform:'PG',diff:'easy',os:'Linux',tags:['python-rce','systemd']},
+  {name:'Hokkaido',platform:'PG',diff:'easy',os:'Linux',tags:['python-rce','cron']},
+  {name:'Hunit',platform:'PG',diff:'easy',os:'Linux',tags:['git','ssh']},
+  {name:'Metallus',platform:'PG',diff:'easy',os:'Windows',tags:['tinycms','cve']},
+  {name:'Kevin',platform:'PG',diff:'easy',os:'Windows',tags:['hp-power','cve']},
+  {name:'Nibbles',platform:'PG',diff:'easy',os:'Linux',tags:['postgres','suid']},
+  {name:'Nukem',platform:'PG',diff:'easy',os:'Linux',tags:['wordpress','nuclear']},
+  {name:'PayDay',platform:'PG',diff:'easy',os:'Linux',tags:['csrf','sudo']},
+  {name:'Pelican',platform:'PG',diff:'easy',os:'Linux',tags:['zookeeper','gcore']},
+  {name:'Readys',platform:'PG',diff:'easy',os:'Linux',tags:['wordpress','redis']},
+  {name:'Slort',platform:'PG',diff:'easy',os:'Windows',tags:['rfi','schedule-task']},
+  {name:'Sorcerer',platform:'PG',diff:'easy',os:'Linux',tags:['suid','zip']},
+  {name:'Squid',platform:'PG',diff:'easy',os:'Windows',tags:['squid-proxy','phpmyadmin']},
+  {name:'Surf',platform:'PG',diff:'easy',os:'Linux',tags:['ssrf','cron']},
+  {name:'Tico',platform:'PG',diff:'easy',os:'Linux',tags:['file-upload','cron']},
+  {name:'Twiggy',platform:'PG',diff:'easy',os:'Linux',tags:['saltstack','cve']},
+  {name:'Wombo',platform:'PG',diff:'easy',os:'Linux',tags:['redis','ssh']},
+  {name:'Zino',platform:'PG',diff:'easy',os:'Linux',tags:['smb','cron']},
+  // PG Medium
+  {name:'AuthBy',platform:'PG',diff:'medium',os:'Windows',tags:['ftp','writable-path']},
+  {name:'Billyboss',platform:'PG',diff:'medium',os:'Windows',tags:['sonatype','juicypotato']},
+  {name:'Banzai',platform:'PG',diff:'medium',os:'Linux',tags:['ftp','webshell','mysql']},
+  {name:'Cassios',platform:'PG',diff:'medium',os:'Linux',tags:['solr','sudo']},
+  {name:'Dibble',platform:'PG',diff:'medium',os:'Linux',tags:['nodejs','suid']},
+  {name:'Escape',platform:'PG',diff:'medium',os:'Windows',tags:['webshell','certutil']},
+  {name:'Fail',platform:'PG',diff:'medium',os:'Linux',tags:['rsync','fail2ban']},
+  {name:'Fired',platform:'PG',diff:'medium',os:'Linux',tags:['padding-oracle','cve']},
+  {name:'Fractal',platform:'PG',diff:'medium',os:'Linux',tags:['symfony','cve']},
+  {name:'Hutch',platform:'PG',diff:'medium',os:'Windows',tags:['ad','ldap','webdav']},
+  {name:'Internal',platform:'PG',diff:'medium',os:'Windows',tags:['cms','cve']},
+  {name:'Jacko',platform:'PG',diff:'medium',os:'Windows',tags:['h2-database','cve']},
+  {name:'Meathead',platform:'PG',diff:'medium',os:'Windows',tags:['mysql','thin-client']},
+  {name:'Nagoya',platform:'PG',diff:'medium',os:'Linux',tags:['cfdb','docker']},
+  {name:'Nickel',platform:'PG',diff:'medium',os:'Windows',tags:['http-api','ssh']},
+  {name:'Peppo',platform:'PG',diff:'medium',os:'Linux',tags:['elFinder','docker']},
+  {name:'Resourced',platform:'PG',diff:'medium',os:'Windows',tags:['ad','rbcd','bloodhound']},
+  {name:'Snookums',platform:'PG',diff:'medium',os:'Linux',tags:['rfi','mysql']},
+  {name:'Sybaris',platform:'PG',diff:'medium',os:'Linux',tags:['redis','cron']},
+  {name:'Vault',platform:'PG',diff:'medium',os:'Linux',tags:['file-upload','cron']},
+  {name:'Vector',platform:'PG',diff:'medium',os:'Linux',tags:['hfs','suid']},
+  {name:'Walla',platform:'PG',diff:'medium',os:'Linux',tags:['raspap','sudo']},
+  {name:'Wheels',platform:'PG',diff:'medium',os:'Linux',tags:['xpath','sudo']},
+];
+
+let oscpChecked={};
+let oscpTab='all';
+
+const LS_OSCP='lockin-oscp';
+
+function oscpKey(box){return box.platform+'_'+box.name;}
+
+function loadOSCP(){
+  try{const d=localStorage.getItem(LS_OSCP);if(d)oscpChecked=JSON.parse(d);}catch(e){}
+}
+function saveOSCP(){
+  try{localStorage.setItem(LS_OSCP,JSON.stringify(oscpChecked));}catch(e){}
+}
+
+async function syncOSCPPush(){
+  await fbSet('oscp',oscpChecked);
+}
+async function syncOSCPPull(){
+  const data=await fbGet('oscp');
+  if(data){
+    // OR merge
+    for(const k of Object.keys(data)){
+      if(data[k])oscpChecked[k]=true;
+    }
+    saveOSCP();
+  }
+}
+
+function toggleOSCP(key){
+  oscpChecked[key]=!oscpChecked[key];
+  if(!oscpChecked[key])delete oscpChecked[key];
+  saveOSCP();
+  syncOSCPPush();
+  renderOSCP();
+  renderAnalytics();
+}
+
+function setOSCPTab(tab,btn){
+  oscpTab=tab;
+  document.querySelectorAll('.oscp-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderOSCP();
+}
+
+function renderOSCP(){
+  const search=document.getElementById('oscpSearch').value.toLowerCase().trim();
+  let filtered=OSCP_BOXES;
+
+  if(oscpTab==='easy')filtered=filtered.filter(b=>b.diff==='easy');
+  else if(oscpTab==='medium')filtered=filtered.filter(b=>b.diff==='medium');
+  else if(oscpTab==='hard')filtered=filtered.filter(b=>b.diff==='hard');
+  else if(oscpTab==='pg')filtered=filtered.filter(b=>b.platform==='PG');
+
+  if(search){
+    filtered=filtered.filter(b=>
+      b.name.toLowerCase().includes(search)||
+      b.os.toLowerCase().includes(search)||
+      b.platform.toLowerCase().includes(search)||
+      b.tags.some(t=>t.includes(search))
+    );
+  }
+
+  const totalAll=OSCP_BOXES.length;
+  const doneAll=OSCP_BOXES.filter(b=>oscpChecked[oscpKey(b)]).length;
+  document.getElementById('oscp-done').textContent=doneAll;
+  document.getElementById('oscp-total').textContent=totalAll;
+  document.getElementById('oscp-pct').textContent=Math.round(doneAll/totalAll*100)+'%';
+
+  const list=document.getElementById('oscpList');
+  if(filtered.length===0){
+    list.innerHTML='<div class="oscp-empty">No boxes found</div>';
+    return;
+  }
+
+  // Sort: unchecked first, then alphabetical
+  filtered.sort((a,b)=>{
+    const ca=oscpChecked[oscpKey(a)]?1:0;
+    const cb=oscpChecked[oscpKey(b)]?1:0;
+    if(ca!==cb)return ca-cb;
+    return a.name.localeCompare(b.name);
+  });
+
+  list.innerHTML=filtered.map(b=>{
+    const key=oscpKey(b);
+    const checked=oscpChecked[key];
+    return `<div class="oscp-box${checked?' checked':''}" onclick="toggleOSCP('${key}')">
+      <div class="cbox${checked?' on':''}" style="min-width:18px;width:18px;height:18px"></div>
+      <div class="oscp-box-info">
+        <div class="oscp-box-name">${b.name}</div>
+        <div class="oscp-box-meta">
+          <span>${b.platform}</span>
+          <span>${b.os}</span>
+          <span>${b.tags.join(', ')}</span>
+        </div>
+      </div>
+      <span class="oscp-diff ${b.diff}">${b.diff}</span>
+    </div>`;
+  }).join('');
+}
+
+// ========== ANALYTICS ==========
+function renderAnalytics(){
+  renderHeatmap();
+  renderOverview();
+  renderWeeklyChart();
+  renderMonthlyChart();
+  renderCategoryChart();
+  renderStreakChart();
+}
+
+function renderHeatmap(){
+  const heatmap=document.getElementById('heatmap');
+  const monthsEl=document.getElementById('heatmapMonths');
+  const today=new Date();
+  const todayKey=dkey();
+
+  // Build 52 weeks of data (columns = weeks, rows = days)
+  const weeks=[];
+  const monthLabels=[];
+
+  // Start from 51 weeks ago, aligned to Sunday
+  const start=new Date(today);
+  start.setDate(start.getDate()-start.getDay()-51*7);
+
+  let lastMonth=-1;
+  for(let w=0;w<52;w++){
+    const col=[];
+    for(let d=0;d<7;d++){
+      const date=new Date(start);
+      date.setDate(date.getDate()+w*7+d);
+      const k=date.toISOString().split('T')[0];
+      // Intensity: check if day had completed tasks (from weekly data in stats)
+      let level=0;
+      if(S.w&&S.w[k])level=4; // completed day
+      else if(date<=today&&date.toISOString().split('T')[0]<=todayKey){
+        // Could check Firebase for historical box data - for now use stats.w
+        level=0;
+      }
+      col.push({key:k,level,isToday:k===todayKey,isFuture:date>today});
+    }
+    weeks.push(col);
+
+    // Month label
+    const firstOfWeek=new Date(start);
+    firstOfWeek.setDate(firstOfWeek.getDate()+w*7);
+    const m=firstOfWeek.getMonth();
+    if(m!==lastMonth){
+      monthLabels.push({week:w,label:firstOfWeek.toLocaleString('en',{month:'short'})});
+      lastMonth=m;
+    }
+  }
+
+  // Render month labels
+  const colW=13; // 11px cell + 2px gap
+  monthsEl.innerHTML=monthLabels.map(ml=>
+    `<span class="heatmap-month-label" style="position:absolute;left:${ml.week*colW}px">${ml.label}</span>`
+  ).join('');
+  monthsEl.style.position='relative';
+  monthsEl.style.height='14px';
+  monthsEl.style.width=(52*colW)+'px';
+
+  // Render cells
+  heatmap.innerHTML=weeks.map(col=>
+    `<div class="heatmap-col">${col.map(c=>{
+      if(c.isFuture)return `<div class="heatmap-cell" style="opacity:.3"></div>`;
+      let cls='heatmap-cell';
+      if(c.level>0)cls+=' l'+c.level;
+      if(c.isToday)cls+=' today-cell';
+      return `<div class="${cls}" title="${c.key}"></div>`;
+    }).join('')}</div>`
+  ).join('');
+}
+
+function renderOverview(){
+  const el=document.getElementById('overviewStats');
+  const totalBoxes=S.b||0;
+  const oscpDone=Object.keys(oscpChecked).filter(k=>oscpChecked[k]).length;
+  const streakDays=S.c||0;
+  const completedDays=Object.keys(S.w||{}).filter(k=>S.w[k]).length;
+
+  el.innerHTML=`
+    <div class="stat-card"><div class="stat-card-num">${totalBoxes}</div><div class="stat-card-lbl">total boxes</div></div>
+    <div class="stat-card"><div class="stat-card-num">${oscpDone}</div><div class="stat-card-lbl">OSCP pwned</div></div>
+    <div class="stat-card"><div class="stat-card-num">${streakDays}</div><div class="stat-card-lbl">current streak</div></div>
+    <div class="stat-card"><div class="stat-card-num">${completedDays}</div><div class="stat-card-lbl">perfect days</div></div>
+  `;
+}
+
+function renderWeeklyChart(){
+  const el=document.getElementById('weeklyChart');
+  const today=new Date();
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const k=d.toISOString().split('T')[0];
+    const done=S.w&&S.w[k]?1:0;
+    days.push({label:DN[d.getDay()],done,key:k,isToday:k===dkey()});
+  }
+
+  el.innerHTML=days.map(d=>{
+    const pct=d.done?100:0;
+    const color=d.done?'var(--green)':'var(--surface2)';
+    const label=d.isToday?`<strong style="color:var(--green)">${d.label}</strong>`:d.label;
+    return `<div class="chart-bar-row">
+      <span class="chart-bar-label">${label}</span>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <span class="chart-bar-val">${d.done?'OK':'-'}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderMonthlyChart(){
+  const el=document.getElementById('monthlyChart');
+  const today=new Date();
+  const months=[];
+
+  for(let i=5;i>=0;i--){
+    const d=new Date(today.getFullYear(),today.getMonth()-i,1);
+    const monthKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    let count=0;
+
+    // Count completed days in this month from S.w
+    if(S.w){
+      for(const k of Object.keys(S.w)){
+        if(k.startsWith(monthKey)&&S.w[k])count++;
+      }
+    }
+    months.push({label:d.toLocaleString('en',{month:'short'}),count});
+  }
+
+  const max=Math.max(...months.map(m=>m.count),1);
+  el.innerHTML=months.map(m=>{
+    const pct=Math.round(m.count/max*100);
+    return `<div class="chart-bar-row">
+      <span class="chart-bar-label">${m.label}</span>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${pct}%;background:var(--blue)"></div></div>
+      <span class="chart-bar-val">${m.count}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCategoryChart(){
+  const el=document.getElementById('categoryChart');
+
+  // Category breakdown from OSCP checked boxes
+  const cats={
+    'SMB / Network':{tags:['smb','nfs','ftp','snmp','dns'],color:'var(--green)',done:0,total:0},
+    'Web Exploits':{tags:['sqli','xss','lfi','rfi','ssrf','xxe','upload','webshell','command-injection'],color:'var(--blue)',done:0,total:0},
+    'Active Directory':{tags:['ad','kerberoast','gpp','ldap','rbcd','bloodhound'],color:'var(--purple)',done:0,total:0},
+    'CVE / Known Exploit':{tags:['cve','ms08-067','ms17-010','eternalblue','shellshock','heartbleed'],color:'var(--amber)',done:0,total:0},
+    'Priv Esc / Misconfig':{tags:['sudo','suid','cron','path-hijack','systemd','docker','lxd','token'],color:'var(--red)',done:0,total:0},
+    'Binary / Exploit Dev':{tags:['bof','binary'],color:'#ff66aa',done:0,total:0},
+  };
+
+  OSCP_BOXES.forEach(b=>{
+    for(const [cat,info] of Object.entries(cats)){
+      if(b.tags.some(t=>info.tags.includes(t))){
+        info.total++;
+        if(oscpChecked[oscpKey(b)])info.done++;
+      }
+    }
+  });
+
+  el.innerHTML=Object.entries(cats).map(([name,info])=>{
+    if(info.total===0)return '';
+    const pct=Math.round(info.done/info.total*100);
+    return `<div class="cat-bar">
+      <div class="cat-bar-head">
+        <span class="cat-bar-name">${name}</span>
+        <span class="cat-bar-count">${info.done}/${info.total}</span>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${info.color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderStreakChart(){
+  const chart=document.getElementById('streakChart');
+  const labels=document.getElementById('streakLabels');
+  const today=new Date();
+  const days=[];
+
+  for(let i=29;i>=0;i--){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const k=d.toISOString().split('T')[0];
+    const done=S.w&&S.w[k]?1:0;
+    days.push({day:d.getDate(),done,isToday:k===dkey()});
+  }
+
+  // Calculate streaks
+  let streaks=[];
+  let current=0;
+  for(const d of days){
+    if(d.done){current++;d.streak=current;}
+    else{current=0;d.streak=0;}
+  }
+
+  const maxStreak=Math.max(...days.map(d=>d.streak),1);
+
+  chart.innerHTML=days.map(d=>{
+    const h=d.streak>0?Math.max(10,d.streak/maxStreak*100):4;
+    return `<div class="streak-bar${d.done?' active':''}" style="height:${h}%" title="${d.day}: ${d.streak} day streak"></div>`;
+  }).join('');
+
+  // Show every 5th label
+  labels.innerHTML=days.map((d,i)=>{
+    return `<span class="streak-lbl">${i%5===0||d.isToday?d.day:''}</span>`;
+  }).join('');
+}
+
+// ========== LOCAL STORAGE ==========
+function localLoad(){
+  try{const s=localStorage.getItem(LS_STATS);if(s)S=JSON.parse(s);}catch(e){}
+  try{const t=localStorage.getItem(LS_TASKS());if(t)T=JSON.parse(t);}catch(e){}
+  try{const n=localStorage.getItem(LS_NOTES());if(n)notes=JSON.parse(n);}catch(e){}
+  try{const b=localStorage.getItem(LS_BOXES());if(b)dayBoxes=JSON.parse(b);}catch(e){}
+}
+
+function localSave(){
+  try{
+    localStorage.setItem(LS_STATS,JSON.stringify(S));
+    localStorage.setItem(LS_TASKS(),JSON.stringify(T));
+    localStorage.setItem(LS_NOTES(),JSON.stringify(notes));
+    localStorage.setItem(LS_BOXES(),JSON.stringify(dayBoxes));
+  }catch(e){}
+}
+
+// ========== FIREBASE SYNC ==========
+let syncTimeout=null;
+
+async function cloudPush(){
+  setSyncStatus('syncing');
+  const today=dkey();
+
+  const ok1=await fbSet('stats',S);
+  const ok2=await fbSet('days/'+today,{tasks:T,notes:notes,boxes:dayBoxes});
+
+  setSyncStatus(ok1&&ok2?'online':'offline');
+  return ok1&&ok2;
+}
+
+async function cloudPull(){
+  setSyncStatus('syncing');
+  const today=dkey();
+
+  const [stats,dayData]=await Promise.all([
+    fbGet('stats'),
+    fbGet('days/'+today)
+  ]);
+
+  if(stats){
+    S.c=Math.max(S.c,stats.c||0);
+    S.b=Math.max(S.b,stats.b||0);
+    S.best=Math.max(S.best,stats.best||0);
+    S.last=stats.last||S.last;
+    S.w={...(stats.w||{}),...(S.w||{})};
+  }
+
+  if(dayData){
+    if(dayData.tasks){
+      for(let i=0;i<N;i++){T[i]=T[i]||dayData.tasks[i]||false;}
+    }
+    if(dayData.notes){
+      if((dayData.notes.box||'').length>(notes.box||'').length) notes.box=dayData.notes.box;
+      if((dayData.notes.mood||'').length>(notes.mood||'').length) notes.mood=dayData.notes.mood;
+    }
+    if(dayData.boxes&&dayData.boxes>dayBoxes) dayBoxes=dayData.boxes;
+  }
+
+  localSave();
+  setSyncStatus(stats!==null?'online':'offline');
+}
+
+function debouncedSync(){
+  if(syncTimeout)clearTimeout(syncTimeout);
+  syncTimeout=setTimeout(()=>{cloudPush();},300);
+}
+
+async function syncNow(){
+  await cloudPull();
+  await syncOSCPPull();
+  await cloudPush();
+  await syncOSCPPush();
+  document.getElementById('boxNote').value=notes.box||'';
+  document.getElementById('moodNote').value=notes.mood||'';
+  draw();
+  renderOSCP();
+  renderAnalytics();
+}
+
+// ========== LOAD ==========
+async function load(){
+  localLoad();
+  loadOSCP();
+
+  try{
+    await Promise.race([
+      Promise.all([cloudPull(),syncOSCPPull()]),
+      new Promise((_,rej)=>setTimeout(()=>rej('timeout'),3000))
+    ]);
+  }catch(e){
+    setSyncStatus('offline');
+  }
+
+  document.getElementById('boxNote').value=notes.box||'';
+  document.getElementById('moodNote').value=notes.mood||'';
+  draw();
+  renderOSCP();
+  renderAnalytics();
+
+  cloudPush();
+  syncOSCPPush();
+}
+
+// Auto-refresh
+setInterval(async()=>{
+  if(!document.hidden){
+    await cloudPull();
+    document.getElementById('boxNote').value=notes.box||'';
+    document.getElementById('moodNote').value=notes.mood||'';
+    draw();
+  }
+},30000);
+
+// ========== SAVE ==========
+function save(){
+  localSave();
+  cloudPush();
+}
+
+function saveNote(){
+  notes.box=document.getElementById('boxNote').value;
+  notes.mood=document.getElementById('moodNote').value;
+  localSave();
+  debouncedSync();
+}
+
+// ========== ACTIONS ==========
+function tog(i){
+  T[i]=!T[i];
+  if(T.every(x=>x)){
+    const td=dkey(),yd=new Date(Date.now()-864e5).toISOString().split('T')[0];
+    if(S.last===yd)S.c++;else if(S.last!==td)S.c=1;
+    S.last=td;S.best=Math.max(S.best,S.c);S.w[td]=true;
+    boom();
+  }
+  save();draw();renderAnalytics();
+}
+
+function adjBox(n){
+  dayBoxes=Math.max(0,dayBoxes+n);
+  S.b=Math.max(0,S.b+n);
+  save();draw();renderAnalytics();
+}
+
+function draw(){
+  for(let i=0;i<N;i++){
+    const c=document.getElementById('c'+i),t=document.getElementById('t'+i);
+    if(c){c.classList.toggle('on',T[i]);t.classList.toggle('done',T[i]);}
+  }
+  document.querySelectorAll('.block[data-tasks]').forEach(bl=>{
+    const ids=bl.dataset.tasks.split(',').map(Number);
+    bl.classList.toggle('all-checked',ids.every(i=>T[i]));
+  });
+  const dn=T.filter(x=>x).length,pc=Math.round(dn/N*100);
+  document.getElementById('pbar').style.width=pc+'%';
+  document.getElementById('plbl').textContent=dn+'/'+N;
+  document.getElementById('ppct').textContent=pc+'%';
+  document.getElementById('s-cur').textContent=S.c;
+  document.getElementById('s-box').textContent=S.b;
+  document.getElementById('s-best').textContent=S.best;
+  document.getElementById('dayBoxCount').textContent=dayBoxes;
+  const now=new Date();
+  document.getElementById('tdate').textContent=now.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
+  const dow=now.getDay();
+  let dh='';
+  for(let d=0;d<7;d++){
+    const dt=new Date(now);dt.setDate(dt.getDate()-dow+d);
+    const k=dt.toISOString().split('T')[0];
+    let cl='day-dot';
+    if(d===dow)cl+=' today';else if(S.w&&S.w[k])cl+=' past-done';
+    dh+=`<div class="${cl}">${DN[d]}</div>`;
+  }
+  document.getElementById('dots').innerHTML=dh;
+  document.getElementById('skillv').textContent=SK[dow];
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');btn.classList.add('active');
+  if(id==='stats')renderAnalytics();
+  if(id==='boxes')renderOSCP();
+}
+
+function resetDay(){
+  T=Array(N).fill(false);notes={box:'',mood:''};dayBoxes=0;
+  document.getElementById('boxNote').value='';
+  document.getElementById('moodNote').value='';
+  save();draw();renderAnalytics();
+}
+
+function genReport(){
+  const now=new Date();
+  const date=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const done=T.filter(x=>x).length;
+  const pct=Math.round(done/N*100);
+  const dow=now.getDay();
+  let completed=[],missed=[];
+  for(let i=0;i<N;i++){if(T[i])completed.push(TASK_NAMES[i]);else missed.push(TASK_NAMES[i]);}
+
+  const oscpDone=Object.keys(oscpChecked).filter(k=>oscpChecked[k]).length;
+
+  let r=`LOCK IN - DAILY REPORT\n`;
+  r+=`${'='.repeat(32)}\n`;
+  r+=`Operator: Mycr0ft\n`;
+  r+=`Date: ${date}\n`;
+  r+=`Skill Focus: ${SK[dow]}\n\n`;
+  r+=`STATS\n${'-'.repeat(32)}\n`;
+  r+=`Tasks: ${done}/${N} (${pct}%)\n`;
+  r+=`Streak: ${S.c} days\n`;
+  r+=`Best: ${S.best} days\n`;
+  r+=`Boxes today: ${dayBoxes}\n`;
+  r+=`Total boxes: ${S.b}\n`;
+  r+=`OSCP list: ${oscpDone}/${OSCP_BOXES.length} pwned\n\n`;
+  r+=`COMPLETED\n${'-'.repeat(32)}\n`;
+  if(completed.length>0)completed.forEach(t=>r+=`  [x] ${t}\n`);else r+=`  (none yet)\n`;
+  if(missed.length>0){r+=`\nMISSED\n${'-'.repeat(32)}\n`;missed.forEach(t=>r+=`  [ ] ${t}\n`);}
+
+  const bn=document.getElementById('boxNote').value.trim();
+  const mn=document.getElementById('moodNote').value.trim();
+  if(bn){r+=`\nBOX NOTES\n${'-'.repeat(32)}\n${bn}\n`;}
+  if(mn){r+=`\nREFLECTION\n${'-'.repeat(32)}\n${mn}\n`;}
+
+  const wd=[];
+  for(let d=0;d<7;d++){
+    const dt=new Date(now);dt.setDate(dt.getDate()-now.getDay()+d);
+    const k=dt.toISOString().split('T')[0];
+    const dn2=S.w&&S.w[k];const it=k===dkey();
+    wd.push(`${DN[d]}:${it?(T.every(x=>x)?'Y':'.'):(dn2?'Y':'.')}`);
+  }
+  r+=`\nWEEK\n${'-'.repeat(32)}\n${wd.join('  ')}\n`;
+  r+=`\n${'='.repeat(32)}\nGenerated by LOCK IN // Mycr0ft`;
+
+  document.getElementById('reportText').value=r;
+  document.getElementById('reportModal').classList.add('show');
+}
+
+function closeReport(){document.getElementById('reportModal').classList.remove('show');}
+
+function copyReport(){
+  const txt=document.getElementById('reportText').value;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copyBtn');b.textContent='Copied!';b.classList.add('copied');
+    setTimeout(()=>{b.textContent='Copy';b.classList.remove('copied');},1500);
+  }).catch(()=>{document.getElementById('reportText').select();document.execCommand('copy');});
+}
+
+function shareReport(){
+  const txt=document.getElementById('reportText').value;
+  if(navigator.share){navigator.share({title:'LOCK IN - Mycr0ft Daily Report',text:txt}).catch(()=>{});}
+  else{copyReport();}
+}
+
+function boom(){
+  const c=document.getElementById('confetti');c.innerHTML='';
+  const cols=['#00ff88','#ffaa00','#00aaff','#ff3355','#8855ff'];
+  for(let i=0;i<40;i++){
+    const p=document.createElement('div');p.className='cpce';
+    p.style.left=Math.random()*100+'%';
+    p.style.background=cols[Math.floor(Math.random()*cols.length)];
+    p.style.animationDelay=Math.random()*.5+'s';
+    p.style.animationDuration=(1+Math.random())+'s';
+    c.appendChild(p);
+  }
+  setTimeout(()=>{c.innerHTML='';},2500);
+}
+
+// Sync when app comes back to foreground
+document.addEventListener('visibilitychange',async()=>{
+  if(!document.hidden){
+    await cloudPull();
+    await syncOSCPPull();
+    document.getElementById('boxNote').value=notes.box||'';
+    document.getElementById('moodNote').value=notes.mood||'';
+    draw();
+    renderOSCP();
+    renderAnalytics();
+  }
+});
+
+window.addEventListener('online',()=>{cloudPush();syncOSCPPush();});
+window.addEventListener('offline',()=>{setSyncStatus('offline');});
+
+load();
+</script>
+</body>
+</html>
